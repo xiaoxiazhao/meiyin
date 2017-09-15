@@ -1,0 +1,120 @@
+html,body{
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+header{
+  position: fixed;
+  top:0;
+  left:0;
+  width: 100%;
+  height:90/75rem;
+  background-color: #fff;
+  .tit{
+    text-align: center;
+    color: #444444;
+    line-height:90/75rem;
+  }
+  .link-all-view{
+    position: absolute;
+    top:20/75rem;
+    right: 30/75rem;
+    width: 150/75rem;
+    height: 50/75rem;
+    line-height: 50/75rem;
+    text-align: center;
+    background-color:#f86262 ;
+    color: #ffffff;
+    border-radius: 3px;
+  }
+}
+.btn-wrapper{
+  position:fixed;
+  bottom:0;
+  left: 0;
+  padding: 34/75rem 5/75rem;
+  display: flex;
+  display: -weblit-flex;
+  .btn{
+    width:314/75rem;
+    height: 73/75rem;
+    line-height: 73/75rem;
+    text-align: center;
+    color: #fff;
+    flex: 1;
+    margin-left: 25/75rem;
+    margin-right: 25/75rem;
+    border:3px solid #f86262;
+    border-radius: 3px;
+  }
+  .link-edit-page{
+    background-color:#f86262 ;
+    color: #fff;
+  }
+  .link-edit-all{
+    background-color:#fff ;
+    color: #f86262;
+  }
+}
+.swiper{
+  width: 100%;
+  height: 786/75rem;
+  padding-left: 80/75rem;
+  padding-right: 80/75rem;
+  display: block;
+  margin:0 auto;
+  position: relative;
+  top:50%;
+  transform: translateY(-50%);
+  -webkit-transform: translateY(-50%);
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+.swiper-container {
+  height: 100%;
+  .swiper-button{
+    width: 80/75rem;
+    height: 100%;
+    display: inline-block;
+    position: absolute;
+    top:0;
+    background-color: #e7e7e7;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin-top:0;
+  }
+  .swiper-button-next{
+    background-image: url("../images/arrow_right.png");
+    background-size: 31/75rem 54/75rem;
+    right: 0;
+  }
+  .swiper-button-prev{
+    background-image: url("../images/arrow_left.png");
+    background-size: 31/75rem 54/75rem;
+    left: 0;
+  }
+}
+.swiper-slide {
+  text-align: center;
+  font-size: 18px;
+  background: #fff;
+
+  /* Center slide text vertically */
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  -webkit-justify-content: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  img{
+    //width: 100%;
+    //height:100%;
+  }
+}

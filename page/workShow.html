@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>作品预览</title>
+    <meta name="screen-orientation" content="portrait">
+    <meta name="full-screen" content="yes">
+    <meta name="browsermode" content="application">
+    <meta name="x5-orientation" content="portrait">
+    <meta name="x5-fullscreen" content="true">
+    <meta name="x5-page-mode" content="app">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/workShow.css">
+    <script src="../js/plugins/flexible.js"></script>
+</head>
+<body>
+<header>
+    <span class="icon-return"></span>
+    <h1 class="tit l-17" id="title"></h1>
+    <span class="icon-music" id="musicBtn"><audio src="" autoplay="autoplay" id="audio"></audio></span>
+</header>
+
+<div class="flipbook-viewport">
+    <div class="container">
+        <div class="flipbook">
+            <!--<div style="background-image:url(../images/ep/1.jpg)" class="bookitem" index="1"></div>-->
+        </div>
+    </div>
+</div>
+
+<div class="ip-wrapper">
+    <input type="text" placeholder="给您的照片书起一个名字" class="l-15" id="workName">
+</div>
+
+<div class="btn-wrapper">
+    <a href="javascript:void(0)" class="btn link-buy l-18" id="buyBtn">购买照片书</a>
+</div>
+
+<script src="../js/plugins/jquery.min.1.7.js"></script>
+<script src="../js/plugins/fast_click.js"></script>
+<script src="../js/plugins/modernizr.2.5.3.min.js"></script>
+<script src="../js/config.js"></script>
+<script type="text/javascript">
+
+var model,content;
+getDataFromService('GET',"method=getWorkInfo&workid="+HASH['workid'],dataHandle);
+
+function dataHandle(res) {
+    if(res.status == 'success'){
+        model = res.model;
+        $("#title").text(model.name);
+        $("#audio").attr('src',model.musicUrl);
+        if(res.model.content.length>0){
+            content = JSON.parse(res.model.content);
+            createFikbook(content.pages);
+            console.log(content.pages);
+            $.each(content.pages,function (i,v) {
+                drawInCanvas(i,v)
+            });
+        }
+    }
+}
+
+function createFikbook(pages) {
+    var teml = '';
+    try{
+        for(var i=0;i<pages.length;i++){
+            teml += '<div style="background-image:url(../images/loadbook.gif)" class="bookitem"  index="'+(i+1)+'"></div>'
+        }
+    }catch (e){
+      console.log(e )
+    }
+    $(".flipbook").html(teml);
+}
+
+// Load the HTML4 version if there's not CSS transform
+yepnope({
+    test : Modernizr.csstransforms,
+    yep: ['../js/turn.js'],
+    nope: ['../js/plugins/turn.html4.min.js'],
+    both: ['../css/workShow.css'],
+    complete: createFikbook
+});
+
+function drawInCanvas(index,value) {
+    var canvas = document.createElement('canvas');
+    var context= canvas.getContext('2d');
+    canvas.width = value.small_w;
+    canvas.height = value.small_h;
+    var n = 0;
+    if(value.areas != undefined){
+        $.each(value.areas,function (item,el) {
+            var img = new Image();
+            img.setAttribute('crossOrigin', 'anonymous');
+            img.src = el.photo_url;
+            (function (item,el) {
+                img.onload = function () {
+                    n += 1;
+                    var photoCanvas=creatPhotoCanvas(value,el,img)
+                    context.drawImage(photoCanvas, el.area_x, el.area_y, el.area_w, el.area_h, el.area_x, el.area_y, el.area_w, el.area_h);
+                    if(n == value.areas.length){
+                        drawTemplate(canvas,context,value,index)
+                    }
+                }
+            })(item,el)
+        })
+    }else{
+        drawTemplate(canvas,context,value,index);
+    }
+}
+
+/* 绘制模板*/
+function drawTemplate(canvas,context,value,index) {
+    var temImage = new Image();
+    var outUrl;
+    temImage.setAttribute('crossOrigin', 'anonymous');
+    temImage.src = value.template_url;
+    temImage.onload = function () {
+        context.drawImage(temImage,0 ,0 , canvas.width,canvas.height);
+        outUrl = canvas.toDataURL('image/jpeg');
+        $(".flipbook .bookitem[index='"+(index+1) +"']").css('background-image','url('+outUrl+')');
+        if(index == content.pages.length-1 ){
+            $('.flipbook').turn({
+                width:9+'rem', // Width
+                height:6+'rem', // Height
+                elevation: 50,// Elevation
+                gradients: true,  // Enable gradients
+                autoCenter: true // Auto center this flipbook
+            });
+        }
+    }
+
+}
+
+/*绘制图片*/
+function creatPhotoCanvas(value,el,img) {
+    var photoCanvas = document.createElement('canvas');
+    photoCanvas.width = value.small_w;
+    photoCanvas.height = value.small_h;
+    var photoContext= photoCanvas.getContext('2d');
+    drawPhotoOnPhotoCanvas(el,photoContext,img);
+    return photoCanvas;
+}
+
+function drawPhotoOnPhotoCanvas(el,photoContext,img){
+    if(el.photo_url != undefined){
+        photoContext.save();
+        photoContext.translate(el.area_x+el.area_w/2,el.area_y+el.area_h/2);
+        photoContext.rotate(el.rotating*Math.PI/180);
+
+        if(el.rotating%180 != 0){ //90
+            if(el.area_w/el.small_h > el.area_h/el.small_w){ //以宽填充
+                el.photo_w = el.small_w*el.area_w/el.small_h;
+                el.photo_h = el.area_w;
+                if(el.photo_w == 0 && el.photo_h == 0){
+                    photoContext.drawImage(img,-el.photo_w/2,-el.area_w/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 90){
+                        photoContext.drawImage(img, -(el.area_h/2-el.photo_y), -el.area_w/2, el.photo_w, el.photo_h);
+                    }else{
+                        photoContext.drawImage(img, -(el.photo_w-el.area_h/2+el.photo_y), -el.area_w/2, el.photo_w, el.photo_h);
+                    }
+                }
+            }else{
+                el.photo_w = el.area_h;
+                el.photo_h = el.small_h*el.area_h/el.small_w;
+                if(el.photo_w == 0 && el.photo_h == 0){
+                    photoContext.drawImage(img,-el.area_h/2,-el.photo_h/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 90){
+                        photoContext.drawImage(img, -el.area_h/2, -(el.photo_h-el.area_w/2+el.photo_x), el.photo_w, el.photo_h);
+                    }else{
+                        photoContext.drawImage(img, -el.area_h/2, -(el.area_w/2-el.photo_x), el.photo_w, el.photo_h);
+                    }
+                }
+            }
+        }else{//180整数倍
+            if(el.area_w/el.small_w > el.area_h/el.small_h){ //以宽填充
+                el.photo_w = el.area_w;
+                el.photo_h = el.small_h*el.area_w/el.small_w;
+                if(el.photo_w == 0 && el.photo_h == 0){ //居中显示
+                    photoContext.drawImage(img,-el.area_w/2,-el.photo_h/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 0){
+                        photoContext.drawImage(img, -el.area_w/2, -el.area_h/2+el.photo_y, el.photo_w, el.photo_h);
+                    }else {
+                        photoContext.drawImage(img, -el.area_w/2, -(el.photo_y-el.area_h/2+el.photo_y), el.photo_w, el.photo_h);
+                    }
+                }
+            }else{ //以高填充
+                el.photo_w = el.small_w*el.area_h/el.small_h;
+                el.photo_h = el.area_h;
+                if(el.photo_w == 0 && el.photo_h == 0){
+                    photoContext.drawImage(img,-el.photo_w/2,-el.area_h/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 0){
+                        photoContext.drawImage(img, -el.area_w/2+el.photo_x, -el.area_h/2, el.photo_w, el.photo_h);
+                    }else{
+                        photoContext.drawImage(img, -(el.photo_w-el.area_w/2+el.photo_x),-el.area_h/2,el.photo_w, el.photo_h);
+                    }
+                }
+            }
+        }
+        photoContext.restore();
+    }
+}
+
+FastClick.attach(document.body);
+$(document.body).on('click',function (ev) {
+    var target = ev.target;
+    var audio = document.getElementById('audio');
+    if( target.id == 'buyBtn' ){
+        var name = $('#workName').val() || model.name;
+        content = JSON.stringify(content)
+        var data = "method=saveWork&workid="+HASH['workid']+"&templateid="+model.templateid+"&name="+name+"&content="+content
+        getDataFromService('POST',data,saveHandle);
+    }else if( target.id == 'musicBtn' ){
+        if($('#musicBtn').hasClass('disabled')){
+            $('#musicBtn').removeClass('disabled');
+            audio.play();
+        }else{
+            $('#musicBtn').addClass('disabled');
+            audio.pause();
+        }
+        return false;
+    }
+});
+function saveHandle() {
+    alert('购买成功')
+}
+
+</script>
+</body>
+</html>

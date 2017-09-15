@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>模板预览</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/templateView.css">
+    <script src="../js/plugins/flexible.js"></script>
+</head>
+<body>
+<div class="box">
+    <header>
+        <span class="icon-return" onclick="window.history.back(-1)"></span>
+        <h1 class="tit l-17" id="title">宝宝的故事</h1>
+        <span class="icon-music" id="musicBtn"><audio src="" autoplay="autoplay" id="audio"></audio></span>
+        <span class="icon-share"></span>
+    </header>
+    <div class="flipbook-viewport">
+        <div class="container">
+            <div class="flipbook" id="flipbook">
+                <!--<div style="background-image:url(../images/ep/1.jpg)"></div>-->
+            </div>
+        </div>
+    </div>
+    <button class="btn-jump l-15" id="btnJump">用这个做</button>
+</div>
+<script src="../js/plugins/jquery.min.1.7.js"></script>
+<script src="../js/plugins/fast_click.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/plugins/modernizr.2.5.3.min.js"></script>
+<script src="http://res.wx.qq.com/open/js/jweixin-1.0.0.js"></script>
+<script type="text/javascript">
+var module;
+var audio = document.getElementById('audio');
+function pageLoad() {
+    getDataFromService('GET',"method=getTemplageInfo&templateid="+HASH['id']+"&type=1",function (res) {
+        if(res.status == 'success'){
+            module = res.model;
+            $("#title").text(module.name);
+            $("#audio").attr('src',module.musicUrl);
+            autoPlayAudio();
+            var teml='';
+            for(var i=0;i<module.templateCount;i++){
+                teml+='<div style="background-image:url(http://images1.wodexiangce.cn/images/weixin/onlinEdit/'+module.id +'/preview/'+(i+1)+'.jpg)"></div>'
+            }
+            $("#flipbook").html(teml);
+
+            // Create the flipbook
+            $('.flipbook').turn({
+                width:9+'rem', // Width
+                height:6+'rem', // Height
+                elevation: 50,// Elevation
+                gradients: true,  // Enable gradients
+                autoCenter: true // Auto center this flipbook
+            });
+        }
+    });
+}
+function autoPlayAudio() {
+    wx.config({
+        // 配置信息, 即使不正确也能使用 wx.ready
+        debug: false,
+        appId: '',
+        timestamp: 1,
+        nonceStr: '',
+        signature: '',
+        jsApiList: []
+    });
+    wx.ready(function() {
+        audio.play();
+    });
+}
+
+// Load the HTML4 version if there's not CSS transform
+yepnope({
+    test : Modernizr.csstransforms,
+    yep: ['../js/turn.js'],
+    nope: ['../js/plugins/turn.html4.min.js'],
+    both: ['../css/templateView.css'],
+    complete: pageLoad
+});
+
+FastClick.attach(document.body);
+$(document.body).on('click',function (ev) {
+    var target = ev.target;
+
+    if( target.id == 'btnJump' ){
+        window.location.href='imageUpload.html?id='+HASH['id']+'&photoCount='+module.photoCount;
+    }else if( target.id == 'musicBtn' ){
+        if($('#musicBtn').hasClass('disabled')){
+            $('#musicBtn').removeClass('disabled');
+            audio.play();
+        }else{
+            $('#musicBtn').addClass('disabled');
+            audio.pause();
+        }
+        return false;
+    }
+})
+
+</script>
+</body>
+</html>

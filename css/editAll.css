@@ -1,0 +1,109 @@
+html {
+  width: 100%;
+}
+body {
+  overflow-y: scroll;
+  height: auto;
+  width: 100%;
+  overflow-x: hidden ;
+  padding-bottom: 2.1rem;
+}
+.content-tip {
+  line-height: 1.2rem;
+  color: #f04e4e;
+  background-color: #fffad9;
+  text-align: center;
+  height: 1.2rem;
+  margin-top: 1rem;
+}
+.item_container {
+  width: 10rem;
+  height: auto;
+  overflow: hidden;
+}
+.item_content ul {
+  list-style: none;
+}
+.item_content ul li {
+  width: 2.26666667rem;
+  height: 2.26666667rem;
+  float: left;
+  margin: 0.06666667rem;
+}
+.item_content {
+  width: 100%;
+  height: auto;
+  padding: 0.2rem;
+}
+.item {
+  width: 2.26666667rem;
+  height: 2.26666667rem;
+}
+.item img {
+  width: 100%;
+  height: 100%;
+}
+.btn-wrapper {
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: 0.45333333rem 0.06666667rem;
+  display: flex;
+  display: -weblit-flex;
+  background-color: rgba(255, 255, 255, 0.6);
+  z-index: 10000;
+}
+.btn-wrapper .btn {
+  width: 4.18666667rem;
+  height: 0.97333333rem;
+  line-height: 0.97333333rem;
+  text-align: center;
+  color: #fff;
+  flex: 1;
+  margin-left: 0.33333333rem;
+  margin-right: 0.33333333rem;
+  border: 3px solid #f86262;
+  border-radius: 3px;
+}
+.btn-wrapper .link-save {
+  background-color: #f86262 ;
+  color: #fff;
+}
+.btn-wrapper .link-return {
+  background-color: #fff ;
+  color: #f86262;
+}
+/*  关于progress的整体框架 */
+.progress-bar {
+  width: 100%;
+  height: 1rem;
+  background-color: rgba(0, 0, 0, 0.6);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+}
+.progress-bar #all-progress {
+  width: 8rem;
+  height: 0.2rem;
+  background-color: #C7C7C7;
+  overflow: visible;
+  position: relative;
+  top: .4rem;
+  left: 1rem;
+}
+.progress-bar #current-progress {
+  width: 0;
+  height: .2rem;
+  background-color: #696969;
+}
+.progress-bar #progress-button {
+  width: .8rem;
+  height: .8rem;
+  display: block;
+  background-color: #696969;
+  position: absolute;
+  top: -0.3rem;
+  left: 0 ;
+}

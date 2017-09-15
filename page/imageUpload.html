@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>模板预览</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/imageUpload.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/6.6.10/sweetalert2.min.css">
+    <script src="../js/plugins/flexible.js"></script>
+</head>
+<body>
+<header>
+    <h1 class="tit l-17">宝宝的故事</h1>
+</header>
+<div class="preload">
+    <img src="../images/loading.gif" alt="">
+</div>
+<div>
+    <button class="btn-upload l-18">上传照片<input type="file" accept="image/*;capture=camera" multiple="multiple" class="inputFile" id="inputFile"></button>
+
+    <div class="new-upload">
+        <div class="line-title l-13"><h3>最新上传</h3></div>
+        <ul class="image-list clear" id="newList">
+                <!--<li class="item">-->
+                    <!--<a href="javascript:void(0);">-->
+                        <!--<img src="../images/default-img.png" alt="" width="100%" height="100%">-->
+                    <!--</a>-->
+                    <!--&lt;!&ndash;<progress min="0" max="100" value="20"></progress>&ndash;&gt;-->
+                    <!--<i class="check"></i>-->
+                <!--</li>-->
+        </ul>
+    </div>
+    <div class="" id="list">
+        <script type="text/html" id="item">
+            {{each list as value i}}
+            <div class="line-title l-13"><h3>{{ value.createtime | dateFormat:'yyyy年MM月dd日'}}</h3></div>
+            <ul class="image-list clear">
+                {{each value.photos as v index}}
+                <li class="item" onclick="check(this)">
+                    <a href="javascript:void(0);">
+                        <img src="{{v.url}}" alt="" width="100%" height="100%" small_w="{{v.small_w}}" small_h="{{v.small_h}}" big_w="{{v.big_w}}" big_h="{{v.big_h}}">
+                    </a>
+                    <i class="check"></i>
+                </li>
+                {{/each}}
+               <!--
+                <li class="item">
+                    <a href="javascript:void(0);">
+                        <img src="../images/default-img.png" alt="" width="100%" height="100%">
+                    </a>
+                    <span class="label label-tip l-15">像素不足</span>
+                    <i class="check"></i>
+                </li>
+                <li class="item">
+                    <a href="javascript:void(0);">
+                        <img src="../images/default-img.png" alt="" width="100%" height="100%">
+                    </a>
+                    <span class="label label-wait l-15">等待上传</span>
+                    <i class="check"></i>
+                </li>
+                <li class="item">
+                    <img src="../images/default-img.png" alt="" width="100%" height="100%">
+                    <span class="label label-ing l-15">上传中</span>
+                </li>
+                <li class="item">
+                    <a href="javascript:void(0);">
+                        <img src="../images/ep/img01.jpg" alt="" width="100%" height="100%">
+                    </a>
+                </li>-->
+            </ul>
+            {{/each}}
+        </script>
+    </div>
+</div>
+
+<div class="btn-wrapper">
+    已选: <span class="choose" id="chooseNum">0</span>  张 / 共需: <span class="total" id="totalNum">--</span> 张
+    <button class="btn-next l-18" id="nextBtn">下一步</button>
+</div>
+
+<script src="../js/plugins/jquery.min.1.7.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/6.6.10/sweetalert2.min.js"></script>
+<script src="../js/plugins/template.js"></script>
+<script src="../js/plugins/fast_click.js"></script>
+<script src="../js/config.js"></script>
+
+<script>
+    var templateData = [];
+    var photoSelectedUrl = [];
+	var content,templateid,name;
+	var currentEditData;
+    var startLen = -1;
+    pageInit();
+    //页面加载
+    function pageInit() {
+        $(".preload").fadeIn()
+        $("#totalNum").html(HASH['photoCount']);
+        getDataFromService('GET',"method=photolist",function (res) {
+            if(res.status == 'success' && res.list.length>=1){
+                var listTmp = template('item',res);
+                $("#list").append(listTmp);
+                $(".preload").fadeOut()
+            }
+        });
+    }
+
+    template.helper('dateFormat', function (date, format) {
+        date = new Date(date);
+        var map = {
+            "M": date.getMonth() + 1, //月份 
+            "d": date.getDate(), //日 
+            "h": date.getHours(), //小时 
+            "m": date.getMinutes(), //分 
+            "s": date.getSeconds(), //秒 
+            "q": Math.floor((date.getMonth() + 3) / 3), //季度 
+            "S": date.getMilliseconds() //毫秒 
+        };
+        format = format.replace(/([yMdhmsqS])+/g, function(all, t){
+            var v = map[t];
+            if(v !== undefined){
+                if(all.length > 1){
+                    v = '0' + v;
+                    v = v.substr(v.length-2);
+                }
+                return v;
+            }
+            else if(t === 'y'){
+                return (date.getFullYear() + '').substr(4 - all.length);
+            }
+            return all;
+        });
+        return format;
+    });
+
+    FastClick.attach(document.body);
+    $(document.body).on('click',function (ev) {
+        var target = ev.target;
+        if( target.id == 'nextBtn' ){
+            if(photoSelectedUrl.length == 0){
+                swal({
+                    text: "请选择需要制作的照片!",
+                    type: "warning",
+                    showConfirmButton:false,
+                    timer: 2000
+                });
+            }else if(HASH['photoCount']/1 > photoSelectedUrl.length ){
+                swal({
+                    text: "您选择的照片数量不足!",
+                    type: "warning",
+                    showConfirmButton:false,
+                    timer: 2000
+                });
+                return false;
+            }else if( HASH['photoCount']/1 < photoSelectedUrl.length ){
+                swal({
+                    text: "照片数量超出!",
+                    type: "warning",
+                    showConfirmButton:false,
+                    timer: 2000
+                });
+                return false;
+            }else{
+                addPhotoToWork();
+            }
+        }
+    });
+
+    Array.prototype.remove = function(val) {
+        var index = this.indexOf(val);
+        if (index > -1) {
+            this.splice(index, 1);
+        }
+    };
+
+    //判定元素是否选中
+    function check(ele){
+        var checkEle=$(ele).find('.check');
+        var src = $(ele).find("img").attr('src');
+        src = src.replace(/\_\d/g,'');
+        if(checkEle.is(':visible')){
+            $(ele).find('.check').hide();
+            photoSelectedUrl.remove(src);
+        }else{
+            $(ele).find('.check').show();
+            photoSelectedUrl.push(src);
+        }
+        $("#chooseNum").text(photoSelectedUrl.length);
+
+        if(HASH['index'] != undefined){
+            getDataFromService('GET',"method=getWorkInfo&workid="+HASH['workid'],function (res) {
+                if(res.status == 'success'){
+                    if(res.model.content.length>0){
+                        content = JSON.parse(res.model.content);
+                        templateid = res.model.templateid;
+                        name = res.model.name;
+                        $.each(content.pages,function (i,v) {
+                            if(i+1 == HASH['page']){
+                                $.each(v.areas,function (index,val) {
+                                    if(index == HASH["index"]){
+                                        var imageEle = $(ele).find('img');
+                                        val.photo_url = imageEle.attr("src").replace(/\_2/,'');
+                                        val.small_w = parseInt(imageEle.attr("small_w"));
+                                        val.small_h = parseInt(imageEle.attr("small_h"));
+                                        val.big_w = parseInt(imageEle.attr("big_w"));
+                                        val.big_h = parseInt(imageEle.attr("big_h"));
+                                        val.photo_x = 0;
+                                        val.photo_y = 0;
+                                        val.photo_w = 0;
+                                        val.photo_h = 0;
+                                    }
+                                });
+                                saveModify(false);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+    }
+
+    function saveModify(boolean) { //true为保存按钮点击  false为替换照片保存
+        if(boolean){
+            $.each(content.pages,function (i,v) {
+                if(i == HASH['page']){
+                    flexibleData(v,false);
+                }
+            })
+        }
+        content = JSON.stringify(content);
+        getDataFromService('GET',"method=saveWork&workid="+HASH['workid']+"&templateid="+templateid+"&name="+name+"&content="+content,function (res) {
+            if(res.status == 'success'){
+                if(boolean){
+                    swal({
+                        text: "保存成功!",
+                        type: "success",
+                        showConfirmButton:false,
+                        timer: 2000
+                    });
+                    window.location.href = "workShow.html?workid="+HASH['workid'];
+                }else{
+                    window.location.href = "/html/page/editCurrent.html?index="+HASH["index"]+"&workid="+HASH["workid"]+"&page="+HASH["page"]+"&returnImageUrl=1"
+                }
+            }
+        });
+    }
+
+    //图片上传
+    document.addEventListener('DOMContentLoaded', init, false);
+
+    //上传服务器
+    var syncUpload = function(imgStr,times){
+        startLen++;
+        imgStr = imgStr.replace(/\+/g,"#wdxc#");
+        imgStr = encodeURIComponent(imgStr.substring(imgStr.indexOf(",")+1));
+        var data = "method=upload&from=ios&imgstr="+imgStr+"&imglength="+imgStr.length + "&size=null";
+        (function (startLen) {
+            $.ajax({
+                url: ajaxUrl+"/online.do",
+                type:"POST",
+                timeout:280*1000,
+                dataType: "json",
+                data:data,
+                headers:{
+                    Authorization :token
+                },
+                success: function(res){
+                    if(res.status == 'success'){
+                        $("#newList li").eq(startLen).html('<a href="javascript:void(0);">'
+                                +'<img src="'+res.url+'" alt="" width="100%" height="auto" small_w="'+res.small_w+'" small_h="'+res.small_h+'" big_w="'+res.big_w+'" big_h="'+res.big_h+'">'
+                                +'</a>'
+                                +'<i class="check"></i>');
+                    }
+                },
+                xhr: function() { //用以显示上传进度
+                    $("#newList li").eq(startLen).html('<a href="javascript:void(0);">'+
+                            '<div class="progress"><span class="current"></span></div>'+
+                            '</a>')
+                    var xhr = $.ajaxSettings.xhr();
+                    (function (startLen) {
+                        if (xhr.upload) {
+                            xhr.upload.addEventListener('progress', function(e) {
+                                $("#newList li").eq(startLen).find('.current').width(e.loaded/e.total*100)
+                            }, false);
+                        }
+                    })(startLen)
+                    return xhr;
+                },
+                complete:function (XMLHttpRequest, textStatus) {
+                    if(XMLHttpRequest.readyState!=4){
+                        if(times<3){
+                            syncUpload(imgStr,times+1);
+                        }else{
+                            $("#newList li").eq(startLen).remove();
+                        }
+                    }
+                }
+            });
+        })(startLen)
+    };
+
+    //生成作品
+    function addPhotoToWork() {
+        var urls = photoSelectedUrl.join(',');
+        getDataFromService('GET',"method=photoSelected&urls="+urls+"&templateid="+HASH['id']+"&name="+HASH['name'],function (res) {
+            if(res.status == 'success'){
+                window.location.href = "/html/page/templateEditClick.html?workid="+res.workid+"&page=1";
+            }
+        });
+    }
+
+    function init() {
+        var u = new UploadPic();
+        u.init({
+            input: document.querySelector('.inputFile'),
+            callback: function (base64) {
+                syncUpload(base64,1);
+            }
+        });
+    }
+
+    function UploadPic() {
+        this.sw = 0;
+        this.sh = 0;
+        this.tw = 0;
+        this.th = 0;
+        this.scale = 0;
+        this.maxWidth = 0;
+        this.maxHeight = 0;
+        this.maxSize = 0;
+        this.fileType = '';
+        this.input = null;
+        this.canvas = null;
+        this.mime = {};
+        this.type = '';
+        this.callback = function () {};
+        this.loading = function () {};
+    }
+
+    UploadPic.prototype.init = function (options) {
+        this.maxWidth = options.maxWidth || 800;
+        this.maxHeight = options.maxHeight || 600;
+        this.maxSize = options.maxSize || 3 * 1024 * 1024;
+        this.input = options.input;
+        this.mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'bmp': 'image/bmp'};
+        this.callback = options.callback || function () {};
+        this.loading = options.loading || function () {};
+        this._addEvent();
+    };
+
+    UploadPic.prototype._addEvent = function () {
+        var _this = this;
+        function tmpSelectFile(ev) {
+            startLen = -1;
+            _this._handelSelectFile(ev);
+        }
+        this.input.addEventListener('change', tmpSelectFile, false);
+    };
+
+    UploadPic.prototype._handelSelectFile = function (ev) {
+        var file = ev.target.files;
+        var _this=this;
+        var template = '';
+
+        for(var i=0;i<file.length;i++ ){
+            _this.fileName = file[i].name;
+            _this.fileSize = file[i].size;
+            _this.fileType = file[i].type;
+            _this.fileDate = file[i].lastModifiedDate;
+            _this._readImage(file[i]);
+            template+='<li class="item" onclick="check(this)">'
+                    +'<a href="javascript:void(0);">'
+                    +'<img src="../images/default-img.png" alt="" width="100%" height="100%">'
+                    +'</a>'
+                    +'<span class="label label-wait l-15">等待上传</span>'
+                    +'<i class="check"></i>'
+                    +'</li>'
+        }
+        $("#newList").prepend(template);
+    };
+
+    UploadPic.prototype._readImage = function (file) {
+        var _this = this;
+        function tmpCreateImage(uri) {
+            _this._createImage(uri);
+        }
+        this.loading();
+        this._getURI(file, tmpCreateImage);
+    };
+
+    UploadPic.prototype._getURI = function (file, callback) {
+        var _this = this;
+        var reader = new FileReader();
+        reader.onload = function (){
+            var re = /^data:base64,/;// 头不带图片格式，需填写格式
+            var ret = this.result + '';
+            if (re.test(ret)) ret = ret.replace(re, 'data:' + _this.mime[_this.fileType] + ';base64,');
+            callback && callback(ret);
+        };
+        reader.readAsDataURL(file);
+        return false;
+    };
+
+    UploadPic.prototype._createImage = function (uri) {
+        var img = new Image();
+        var _this = this;
+        img.onload = function () {
+            _this._drawImage(this);
+        };
+        img.src = uri;
+    };
+
+    UploadPic.prototype._drawImage = function (img, callback) {
+        this.sw = img.width;
+        this.sh = img.height;
+        this.tw = img.width;
+        this.th = img.height;
+        this.scale = (this.tw / this.th).toFixed(2);
+        if (this.sw > this.maxWidth) {
+            this.sw = this.maxWidth;
+            this.sh = Math.round(this.sw / this.scale);
+        }
+        if (this.sh > this.maxHeight) {
+            this.sh = this.maxHeight;
+            this.sw = Math.round(this.sh * this.scale);
+        }
+        this.canvas = document.createElement('canvas');
+        var ctx = this.canvas.getContext('2d');
+        this.canvas.width = this.sw;
+        this.canvas.height = this.sh;
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, this.sw, this.sh);
+        this.callback(this.canvas.toDataURL(this.type));
+        ctx.clearRect(0, 0, this.tw, this.th);
+        this.canvas.width = 0;
+        this.canvas.height = 0;
+        this.canvas = null;
+    };
+
+
+</script>
+
+</body>
+</html>

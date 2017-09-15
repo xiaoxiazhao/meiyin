@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>单页照片编辑</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/templateEdit.css">
+    <link rel="stylesheet" href="../js/plugins/swiper.min.css">
+    <script src="../js/plugins/flexible.js"></script>
+</head>
+<body>
+<header>
+    <h1 class="tit l-17" id="page">1/20</h1>
+    <!--<a class="link-all-view" href="javascript:void(0)" id="allBookView">整书预览</a>-->
+</header>
+
+<!-- Swiper -->
+<div class="swiper">
+    <div class="swiper-button-next swiper-button"></div>
+    <div class="swiper-button-prev swiper-button"></div>
+    <div class="swiper-container">
+        <div class="swiper-wrapper" id="swiperContent">
+            <!--<div class="swiper-slide" index="1"><img src="../images/ep/1.jpg" alt="" width="100%"></div>-->
+        </div>
+    </div>
+</div>
+
+<div class="btn-wrapper">
+    <a href="javascript:void(0)" class="btn link-edit-page l-18" id="editCurrentPage">编辑本页</a>
+    <a href="javascript:void(0)" class="btn link-edit-all  l-18" id="editAllPage">编辑整书</a>
+</div>
+
+<script src="../js/plugins/jquery.min.1.7.js"></script>
+<script src="../js/plugins/swiper.min.js"></script>
+<script src="../js/plugins/fast_click.js"></script>
+<script src="../js/config.js"></script>
+
+<script>
+var swiper ;
+var allPage = 0;
+var currentPage=1,content;
+
+getDataFromService('GET',"method=getWorkInfo&workid="+HASH['workid'],dataHandle);
+
+function dataHandle(res) {
+    if(res.status == 'success'){
+        if(res.model.content.length>0){
+            content = JSON.parse(res.model.content);
+            swiperItem(content.pages);
+            $.each(content.pages,function (i,v) {
+                drawInCanvas(i,v)
+            });
+        }
+    }
+}
+
+function drawInCanvas(index,value) {
+    var canvas = document.createElement('canvas');
+    var context= canvas.getContext('2d');
+    canvas.width = value.small_w;
+    canvas.height = value.small_h;
+    var n = 0;
+    if(value.areas != undefined){
+        $.each(value.areas,function (item,el) {
+            var img = new Image();
+            img.setAttribute('crossOrigin', 'anonymous');
+            img.src = el.photo_url;
+            (function (item,el) {
+                img.onload = function () {
+                    n += 1;
+                    var photoCanvas=creatPhotoCanvas(value,el,img)
+                    context.drawImage(photoCanvas, el.area_x, el.area_y, el.area_w, el.area_h, el.area_x, el.area_y, el.area_w, el.area_h);
+                    if(n == value.areas.length){
+                        drawTemplate(canvas,context,value,index)
+                    }
+                }
+            })(item,el)
+        })
+    }else{
+        drawTemplate(canvas,context,value,index);
+    }
+}
+
+/* 绘制模板*/
+function drawTemplate(canvas,context,value,index) {
+    var temImage = new Image();
+    var outUrl;
+    temImage.setAttribute('crossOrigin', 'anonymous');
+    temImage.src = value.template_url;
+    temImage.onload = function () {
+        context.drawImage(temImage,0 ,0 , canvas.width,canvas.height);
+        outUrl = canvas.toDataURL('image/jpeg');
+        $("#swiperContent .swiper-slide[index='"+(index+1) +"']").find('img').attr('src',outUrl).css('width','100%');
+    }
+}
+
+/*绘制图片*/
+function creatPhotoCanvas(value,el,img) {
+    var photoCanvas = document.createElement('canvas');
+    photoCanvas.width = value.small_w;
+    photoCanvas.height = value.small_h;
+    var photoContext= photoCanvas.getContext('2d');
+    drawPhotoOnPhotoCanvas(el,photoContext,img);
+    return photoCanvas;
+}
+
+function drawPhotoOnPhotoCanvas(el,photoContext,img){
+    if(el.photo_url != undefined){
+        photoContext.save();
+        photoContext.translate(el.area_x+el.area_w/2,el.area_y+el.area_h/2);
+        photoContext.rotate(el.rotating*Math.PI/180);
+
+        if(el.rotating%180 != 0){ //90
+            if(el.area_w/el.small_h > el.area_h/el.small_w){ //以宽填充
+                el.photo_w = el.small_w*el.area_w/el.small_h;
+                el.photo_h = el.area_w;
+                if(el.photo_w == 0 && el.photo_h == 0){
+                    photoContext.drawImage(img,-el.photo_w/2,-el.area_w/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 90){
+                        photoContext.drawImage(img, -(el.area_h/2-el.photo_y), -el.area_w/2, el.photo_w, el.photo_h);
+                    }else{
+                        photoContext.drawImage(img, -(el.photo_w-el.area_h/2+el.photo_y), -el.area_w/2, el.photo_w, el.photo_h);
+                    }
+                }
+            }else{
+                el.photo_w = el.area_h;
+                el.photo_h = el.small_h*el.area_h/el.small_w;
+                if(el.photo_w == 0 && el.photo_h == 0){
+                    photoContext.drawImage(img,-el.area_h/2,-el.photo_h/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 90){
+                        photoContext.drawImage(img, -el.area_h/2, -(el.photo_h-el.area_w/2+el.photo_x), el.photo_w, el.photo_h);
+                    }else{
+                        photoContext.drawImage(img, -el.area_h/2, -(el.area_w/2-el.photo_x), el.photo_w, el.photo_h);
+                    }
+                }
+            }
+        }else{//180整数倍
+            if(el.area_w/el.small_w > el.area_h/el.small_h){ //以宽填充
+                el.photo_w = el.area_w;
+                el.photo_h = el.small_h*el.area_w/el.small_w;
+                if(el.photo_w == 0 && el.photo_h == 0){ //居中显示
+                    photoContext.drawImage(img,-el.area_w/2,-el.photo_h/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 0){
+                        photoContext.drawImage(img, -el.area_w/2, -el.area_h/2+el.photo_y, el.photo_w, el.photo_h);
+                    }else {
+                        photoContext.drawImage(img, -el.area_w/2, -(el.photo_y-el.area_h/2+el.photo_y), el.photo_w, el.photo_h);
+                    }
+                }
+            }else{ //以高填充
+                el.photo_w = el.small_w*el.area_h/el.small_h;
+                el.photo_h = el.area_h;
+                if(el.photo_w == 0 && el.photo_h == 0){
+                    photoContext.drawImage(img,-el.photo_w/2,-el.area_h/2,el.photo_w,el.photo_h);
+                }else{
+                    if(el.rotating == 0){
+                        photoContext.drawImage(img, -el.area_w/2+el.photo_x, -el.area_h/2, el.photo_w, el.photo_h);
+                    }else{
+                        photoContext.drawImage(img, -(el.photo_w-el.area_w/2+el.photo_x),-el.area_h/2,el.photo_w, el.photo_h);
+                    }
+                }
+            }
+        }
+        photoContext.restore();
+    }
+}
+
+//预先加载loading
+function swiperItem(item) {
+    for(var i=0;i<item.length;i++){
+        var swiperSlide = $('<div></div>');
+        swiperSlide.addClass('swiper-slide');
+        swiperSlide.attr('index',i+1);
+        var swiperImage = $('<img/>');
+        swiperImage.attr('src','../images/loading.gif');
+        swiperImage.appendTo(swiperSlide);
+        $("#swiperContent").append(swiperSlide);
+    }
+    swiperInit();
+}
+
+//初始化swiper
+function swiperInit() {
+    swiper = new Swiper('.swiper-container', {
+        nextButton: '.swiper-button-next',
+        prevButton: '.swiper-button-prev',
+        onSlideChangeEnd:function (swiper) {
+            getCurrentPage();
+        }
+    });
+    allPage = $(".swiper-wrapper .swiper-slide").length;
+    getCurrentPage();
+}
+
+
+FastClick.attach(document.body);
+$(document.body).on('click',function (ev) {
+    var target = ev.target;
+    if( target.id == 'allBookView' ){
+        window.location.href = "workShow.html?workid="+HASH['workid'];
+    }else if( target.id == 'editCurrentPage' ){
+        window.location.href = "editCurrent.html?workid="+HASH['workid']+"&page="+(currentPage-1);
+    }else if( target.id == 'editAllPage' ){
+        window.location.href = "editAll.html?workid="+HASH['workid'];
+    }else if(target.className.indexOf('.swiper-button') == -1){
+        getCurrentPage();
+    }
+})
+
+function getCurrentPage() {
+    currentPage=$(".swiper-slide-active").attr("index");
+    $("#page").text(currentPage/1+'/'+allPage)
+}
+
+</script>
+</body>
+</html>

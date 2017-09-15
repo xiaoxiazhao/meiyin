@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>选择模板</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/templateList.css">
+    <script src="../js/plugins/flexible.js"></script>
+</head>
+<body>
+<ul class="template-list clear" id="list">
+    <script type="text/html" id="item">
+        {{each list as value i}}
+        <li class="item">
+            <a href="templateView.html?id={{value.id}}">
+                <div class="template-image">
+                    <img src="../images/loading.gif" data-src="{{value.previewUrl}}" class="si">
+                </div>
+                <div class="template-detail clear">
+                    <span class="name l-12">{{value.name}}</span>
+                    <button class="link-make l-12">去制作</button>
+                </div>
+            </a>
+        </li>
+        {{/each}}
+    </script>
+</ul>
+<script></script>
+<script src="../js/plugins/jquery.min.1.7.js"></script>
+<script src="../js/plugins/template.js"></script>
+<script src="../js/config.js"></script>
+<script>
+(function (window, document) {
+    var helper = helper || (function (helper) {
+                loadImage = function(targetImg, url, error_url,callback,errorFunc){
+                    var img = new Image();
+                    img.src = url;
+                    img.onload = function() {
+                        img.onload = null;
+                        callback();
+                    };
+                    img.onerror = function(){
+                        img.onerror = null;
+                        errorFunc();
+                    }
+                },
+                firstView_ = function(){
+                    $("img.si").each(function(){
+                        if($(this).offset().top<$(window).height()){
+                            var re_url = $(this).attr("data-src"), error_url = "../images/loading.gif", targetImg = $(this);
+                            loadImage(targetImg,re_url,error_url, function() {
+                                targetImg.attr('src', re_url);
+                                targetImg.css({
+                                    'width':'100%',
+                                    'height':'100%'
+                                })
+                            },function(tar){
+                                targetImg.attr('src', error_url);
+                            })
+                        }
+                    })
+                },
+                lazyLoad_ = function(event) {
+                    $("img.si").each(function(){
+                        if($(this).offset().top - $(this).height() < $(window).height()+$(window).scrollTop()){
+                            var re_url = $(this).attr("data-src"), error_url = "../images/loading.gif", targetImg = $(this);
+                            loadImage(targetImg,re_url,error_url, function() {
+                                targetImg.attr('src', re_url);
+                                targetImg.css({
+                                    'width':'100%',
+                                    'height':'100%'
+                                })
+                            },function(tar){
+                                targetImg.attr('src', error_url);
+                            })
+                        }
+                    })
+                };
+                return {
+                    lazyLoad:lazyLoad_,
+                    firstView:firstView_
+                };
+            })();
+    if (typeof module !== "undefined" && module.exports) {
+        module.exports = helper;
+    }else if (typeof define === 'function' && define.amd) {
+        define(function(){return helper;});
+    }
+    if ( typeof window === "object" && typeof window.document === "object" ) {
+        window.helper= helper;
+    }
+}).call(this, window, document);
+</script>
+
+<script>
+
+getDataFromService('GET',"method=getTemplateList&productid=1998&start=0&size=10",function (res) {
+    if(res.status == 'success' && res.list.length>=1){
+        var listTmp = template('item',res);
+        $("#list").append(listTmp);
+        helper.firstView();
+    }
+});
+window.onscroll=function () {
+    helper.lazyLoad();
+}
+
+
+</script>
+</body>
+</html>

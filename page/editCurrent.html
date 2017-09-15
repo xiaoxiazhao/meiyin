@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/editCurrent.css">
+    <script src="../js/plugins/flexible.js"></script>
+</head>
+<body>
+
+<div class="edit-wrapper" id="editWrapper"></div>
+<div class="btn-wrapper"><a href="javascript:void(0)" class="link-save l-18" id="saveBtn">保存修改</a></div>
+<script src="../js/plugins/jquery.min.1.7.js"></script>
+<script src="../js/plugins/fast_click.js"></script>
+<script src="../js/config.js"></script>
+<script>
+    $(function () {
+        // 请求数据
+        var content,templateid,name;
+        $.ajax({
+            type: 'GET',
+            dataType: "json",
+            url: ajaxUrl+"/online.do",
+            data:"method=getWorkInfo&workid="+HASH['workid'],
+            contentType: "application/json",
+            headers:{
+                Authorization :token
+            },
+            success:function (res) {
+                if(res.status == 'success'){
+                    if(res.model.content.length>0){
+                        content = JSON.parse(res.model.content);
+                        templateid = res.model.templateid;
+                        name = res.model.name;
+                        $.each(content.pages,function (i,v) {
+                            if(i == HASH['page']){
+                                var imgSession = window.sessionStorage.getItem('imgSession');
+                                if( HASH['returnImageUrl']!=undefined && HASH['returnImageUrl'] == 1&&imgSession!=undefined){
+                                    imgSession = JSON.parse(imgSession);
+                                    $.each(v.areas,function (index,val) {
+                                        if(index == HASH["index"]){
+                                            val.photo_url = imgSession.url;
+                                            val.small_w = imgSession.small_w;
+                                            val.small_h = imgSession.small_h;
+                                            val.big_w = imgSession.big_w;
+                                            val.big_h = imgSession.big_h;
+                                            val.photo_x = 0;
+                                            val.photo_y = 0;
+                                            val.rotating = 0;
+                                        }
+                                    })
+                                    saveModify(false);
+                                }
+                                currentPageInit(v);
+                            }
+                        })
+                    }
+                }
+            }
+        });
+
+        FastClick.attach(document.body);
+        $(document.body).on('click',function (ev) {
+            var target = ev.target;
+            if(target.id == 'saveBtn'){
+                saveModify(true);
+            }
+        })
+
+        function saveModify(boolean) { //true为保存按钮点击  false为替换照片保存
+            if(boolean){
+                if(typeof content != "object"){
+                    content = JSON.parse(content);
+                }
+
+                $.each(content.pages,function (i,v) {
+                    if(i == HASH['page']){
+                        flexibleData(v,false);
+                    }
+                })
+            }
+            content = JSON.stringify(content);
+            $.ajax({
+                type: 'POST',
+                dataType: "json",
+                url: ajaxUrl+"/online.do",
+                data:"method=saveWork&workid="+HASH['workid']+"&templateid="+templateid+"&name="+name+"&content="+content,
+                headers:{
+                    Authorization :token
+                },
+                success:function (res) {
+                    if(res.status == 'success'){
+                        if(boolean){
+                            alert('保存成功');
+                            if(window.sessionStorage.getItem('imgSession')!=undefined){
+                                window.sessionStorage.removeItem('imgSession');
+                            }
+                            window.location.href = "templateEdit.html?workid="+HASH['workid'];
+                        }
+                    }
+                }
+            });
+        }
+
+        function flexibleData(obj,boolean){ //boolean true表示后台数据换换成手机尺寸 false反之
+            var a=$('body')[0].clientWidth/10;
+            if(boolean){
+                pxc=a/75;
+            }else {
+                pxc=75/a;
+            }
+
+            if(obj.small_w){
+                obj.small_w = obj.small_w*pxc;
+            }
+            if(obj.small_h){
+                obj.small_h = obj.small_h*pxc;
+            }
+            $.each(obj.areas,function (i,v) {
+                if(v.area_w){
+                    v.area_w = v.area_w*pxc
+                }
+                if(v.area_h){
+                    v.area_h = v.area_h*pxc
+                }
+                if(v.area_x){
+                    v.area_x = v.area_x*pxc
+                }
+                if(v.area_y){
+                    v.area_y = v.area_y*pxc
+                }
+                if(v.photo_w){
+                    v.photo_w = v.photo_w*pxc
+                }
+                if(v.photo_h){
+                    v.photo_h = v.photo_h*pxc
+                }
+                if(v.photo_x){
+                    v.photo_x = v.photo_x*pxc
+                }
+                if(v.photo_y){
+                    v.photo_y = v.photo_y*pxc
+                }
+            })
+        }
+
+
+        //  初始化数据
+        var currentPageInit=function (obj) {
+            flexibleData(obj,true);
+            var $editWrapper = $("#editWrapper");
+            var temZindex=100;
+
+            $editWrapper.width(obj.small_w);
+            $editWrapper.height(obj.small_h);
+
+            var template=$('<img/>');
+            template.attr('src',obj.template_url);
+            template.css({
+                'width':obj.small_w,
+                'height':obj.small_h,
+                'position':'absolute',
+                'left':0,
+                'top':0,
+                'z-index':temZindex
+            })
+            areaPhoto();
+            function areaPhoto() {
+                $.each(obj.areas,function (i,v) {
+                    //窟窿init
+                    var areasDiv=$("<div></div>");
+                    areasDiv.addClass('areas-div');
+                    areasDiv.css({
+                        'width':v.area_w,
+                        'height':v.area_h,
+                        'top':v.area_y,
+                        'left':v.area_x,
+                        'z-index':v.index/1 + temZindex
+                    })
+
+                    var areasViewDiv=$("<div></div>");
+                    areasViewDiv.addClass('areas-div');
+                    areasViewDiv.css({
+                        'width':v.area_w,
+                        'height':v.area_h,
+                        'top':v.area_y,
+                        'left':v.area_x,
+                        'z-index':v.index/1
+                    })
+
+                    //photo init
+                    var photoDiv=$("<div></div>");
+                    photoDiv.addClass('photo-div');
+                    photoDiv.css({
+                        'z-inde':v.index/1 + temZindex+ 1
+                    })
+
+                    var photoViewDiv=$("<div></div>");
+                    photoViewDiv.addClass('photo-div');
+                    photoViewDiv.css({
+                        'z-inde':v.index/1 + 1
+                    })
+
+                    var photoImage=$("<img/>");
+                    photoImage.attr('src',v.photo_url.replace(/\.jpg/,'_1.jpg'));
+                    photoImage.addClass('photo-img');
+                    photoImage.css({
+                        'z-inde':v.index/1 + 1,
+                        'position':'absolute',
+                        'top':'50%',
+                        'left':'50%',
+                        'transform':'translate(-50%,-50%) rotate(0deg) scale(1)',
+                        '-webkit-transform':'translate(-50%,-50%) rotate(0deg) scale(1)'
+                    })
+                    positon(v,false);
+                    function positon(v,isrotating) { //isrotating是否正在旋转
+                        console.log(obj)
+                        //photo position
+                        //填冲照片
+                        if( v.small_w != 0 && v.small_h != 0 && v.photo_url!=undefined){
+                            photoDiv.css({'position':'absolute'});
+                            photoViewDiv.css({'position':'absolute'});
+                            if( (v.rotating/90)%2 != 0 ){  //旋转角度是90的奇数倍
+                                //旋转后以窟窿宽为基准
+                                if(v.area_w /v.small_h >v.area_h/v.small_w){
+                                    //1.div变大居中 2.图片在新的div中居中 3.图片旋转
+                                    photoDiv.css({
+                                        'width':v.area_w,
+                                        'height':v.small_w*(v.area_w/v.small_h)
+                                    });
+                                    photoViewDiv.css({
+                                        'width':v.area_w,
+                                        'height':v.small_w*(v.area_w/v.small_h)
+                                    });
+                                    photoDiv.css({'left':0, 'top':(v.area_h-v.small_w*(v.area_w/v.small_h))/2});
+                                    photoViewDiv.css({'left':0, 'top':(v.area_h-v.small_w*(v.area_w/v.small_h))/2});
+                                    photoImage.css({
+                                        'width':'100%',
+                                        'height':'auto',
+                                        'transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale('+(v.area_w/(v.small_h*(v.area_w/v.small_w)))+')',
+                                        '-webkit-transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale('+(v.area_w/(v.small_h*(v.area_w/v.small_w)))+')'
+                                    })
+
+                                    v.photo_w = v.area_w;
+                                    v.photo_h = v.small_w*(v.area_w/v.small_h);
+                                }else{ //旋转后以窟窿高为基准
+//                                    console.log(obj);
+                                    //1.div变大居中 2.图片在新的div中居中 3.图片旋转
+                                    photoDiv.css({
+                                        'width':v.small_h*(v.area_h/v.small_w),
+                                        'height':v.area_h
+                                    });
+                                    photoViewDiv.css({
+                                        'width':v.small_h*(v.area_h/v.small_w),
+                                        'height':v.area_h
+                                    });
+                                    photoDiv.css({'left':(v.area_w-v.small_h*(v.area_h/v.small_w))/2, 'top':0});
+                                    photoViewDiv.css({'left':(v.area_w-v.small_h*(v.area_h/v.small_w))/2, 'top':0});
+                                    photoImage.css({
+                                        'height':'100%',
+                                        'width':'auto',
+                                        'transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale('+(v.area_h/(v.small_w*(v.area_h/v.small_h)))+')',
+                                        '-webkit-transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale('+(v.area_h/(v.small_w*(v.area_h/v.small_h))) +')'
+                                    })
+                                    v.photo_w = v.small_h*(v.area_h/v.small_w);
+                                    v.photo_h = v.area_h;
+                                }
+                                if(!isrotating){
+                                    if( v.photo_w!=0 && v.photo_h!=0 ){
+                                        photoDiv.css({'left':v.photo_x, 'top':v.photo_y});
+                                        photoViewDiv.css({'left':v.photo_x, 'top':v.photo_y});
+                                    }
+                                }
+                            }else{//旋转角度是180的倍数
+                                if(v.area_w /v.small_w >v.area_h/v.small_h){
+                                    photoDiv.css({
+                                        'width':v.area_w,
+                                        'height':v.small_h*(v.area_w/v.small_w)
+                                    })
+                                    photoViewDiv.css({
+                                        'width':v.area_w,
+                                        'height':v.small_h*(v.area_w/v.small_w)
+                                    })
+                                    photoDiv.css({'left':0, 'top':-(v.small_h*(v.area_w/v.small_w)-v.area_h)/2})
+                                    photoViewDiv.css({'left':0, 'top':-(v.small_h*(v.area_w/v.small_w)-v.area_h)/2})
+                                    photoImage.css({
+                                        'height':'100%',
+                                        'width':'auto',
+                                        'transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale(1)',
+                                        '-webkit-transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale(1)'
+                                    })
+                                    v.photo_w = v.area_w;
+                                    v.photo_h = v.small_h*(v.area_w/v.small_w);
+                                }else{//以高为基准
+                                    photoDiv.css({
+                                        'width':v.small_w*(v.area_h/v.small_h),
+                                        'height':v.area_h
+                                    })
+                                    photoViewDiv.css({
+                                        'width':v.small_w*(v.area_h/v.small_h),
+                                        'height':v.area_h
+                                    })
+                                    photoDiv.css({'left':-(v.small_w*(v.area_h/v.small_h)-v.area_w)/2, 'top':0})
+                                    photoViewDiv.css({'left':-(v.small_w*(v.area_h/v.small_h)-v.area_w)/2, 'top':0})
+                                    photoImage.css({
+                                        'height':'100%',
+                                        'transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale(1)',
+                                        '-webkit-transform':'translate(-50%,-50%) rotate('+v.rotating+'deg) scale(1)'
+                                    })
+                                    v.photo_w = v.small_w*(v.area_h/v.small_h);
+                                    v.photo_h = v.area_h;
+                                }
+                                if(!isrotating){
+                                    if( v.photo_w!=0 && v.photo_h!=0 ){
+                                        photoDiv.css({'left':v.photo_x, 'top':v.photo_y});
+                                        photoViewDiv.css({'left':v.photo_x, 'top':v.photo_y});
+                                    }
+                                }
+                            }
+                        }else{
+                            //没填冲照片
+                            if(v.area_w/v.small_w>v.area_h/v.small_h){
+                                photoDiv.css({'width':v.area_w, 'height':v.area_y});
+                                photoViewDiv.css({'width':v.area_w, 'height':v.area_y})
+                            }
+                        }
+                    }
+
+                    // 控制键
+                    var controlDiv = $('<div></div>');
+                    controlDiv.addClass('img-control');
+                    var controlLeft = $('<a href="javascript:void(0);"></a>');
+                    controlLeft.addClass('upload');
+                    var controlRight = $('<a href="javascript:void(0);"></a>');
+                    controlRight.addClass('rotate');
+
+                    (function (index) {
+                        controlLeft.on('click',function (e) {
+                            window.location.href = "imageUpload.html?index="+index+"&workid="+HASH['workid']+"&page="+HASH['page'];
+                        })
+                        controlRight.on('click',function (e) {
+                            var curRotate  = v.rotating +90;
+                            if(curRotate%180 == 0){ //180的倍数
+                                if(curRotate%360 == 0){
+                                    curRotate = 0;
+                                }else{
+                                    curRotate = 180
+                                }
+                            }else{
+                                if(curRotate%270 == 0){
+                                    curRotate = -90;
+                                }else{
+                                    curRotate = 90
+                                }
+                            }
+                            //更改图片位置数据
+                            obj.areas[index]['rotating'] = curRotate;
+                            obj.areas[index]['rotating'] = curRotate;
+                            positon(obj.areas[index],true);
+                        })
+                    })(i)
+
+                    template.appendTo($editWrapper);
+                    controlLeft.appendTo(controlDiv);
+                    controlRight.appendTo(controlDiv);
+                    controlDiv.appendTo(areasDiv);
+                    photoDiv.appendTo(areasDiv);
+                    areasDiv.appendTo($editWrapper);
+                    photoViewDiv.appendTo(areasViewDiv);
+                    photoImage.appendTo(photoViewDiv);
+                    areasViewDiv.appendTo($editWrapper);
+
+                    //移动
+                    (function (index) {
+                        var L,T,starX,starY,starXEnd,starYEnd,startPX,startPY,isDrag=false;
+                        photoDiv.on('touchstart',function(e1){
+                            e1.defaultPrevented;//阻止触摸时页面的滚动，缩放
+                            starX = e1.originalEvent.targetTouches[0].pageX;
+                            starY = e1.originalEvent.targetTouches[0].pageY;
+                            startPX=photoDiv.position().left;
+                            startPY=photoDiv.position().top;
+                            isDrag=true;
+
+                            $(document).on('touchmove',function(e){
+                                //移动时 当前位置与起始位置之间的差值
+                                e.defaultPrevented;
+                                starXEnd = e.originalEvent.targetTouches[0].pageX - starX;
+                                starYEnd = e.originalEvent.targetTouches[0].pageY - starY;
+
+                                L=startPX+starXEnd;
+                                T=startPY+starYEnd;
+
+                                if(isDrag === true){
+                                    //左右移动
+                                    if(L<=areasDiv.width()-photoDiv.width()){
+                                        L=areasDiv.width()-photoDiv.width()
+                                    } else if(L>= 0){
+                                        L=0;
+                                    }
+                                    //上下移动
+                                    if(T<=areasDiv.height()-photoDiv.height()){
+                                        T=areasDiv.height()-photoDiv.height()
+                                    }else if(T>=0 ){
+                                        T = 0;
+                                    }
+
+                                    //更改图片位置数据
+                                    obj.areas[index]['photo_x'] = L;
+                                    obj.areas[index]['photo_y'] = T;
+                                    photoDiv.css({'left':L, 'top':T})
+                                    photoViewDiv.css({'left':L, 'top':T});
+                                    console.log(obj);
+                                }
+                            });
+                            $(document).on('touchend',function(e2){
+                                e2.defaultPrevented;
+                                isDrag=false;
+                            });
+                        });
+                    })(i)
+                })
+            }
+        }
+    })
+</script>
+</body>
+</html>
